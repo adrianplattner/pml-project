@@ -1,0 +1,65 @@
+---
+title: "Predicting Modeling over the Weight Lifting Exercises Dataset"
+author: "Adrián Gómez"
+output: html_document
+---
+
+## Overview
+
+The human activity recognition research has traditionally focused on discriminating between different activities, but not "how well" an activity was performed. Given the **Weight Lifting Exercises Dataset** we are going to develop a model to predict if a given exercise is performed correctly or not.
+
+## Exploratory Analysis
+```{r}
+library(caret)
+library(ggplot2)
+pml <- read.csv('pml-training.csv')
+dim(pml)
+```
+    
+```{r}
+  
+g <- ggplot(pml,aes(classe,fill = classe))
+g + geom_bar()
+
+```
+
+The *classe* variable is the outcome, and represent five different ways to do a given exercise. The letter A means that the exercise was performed correctly and the other letters(B-E) are different forms of having performed the exercise  incorrectly.
+
+## Preprocessing
+```{r}
+
+  pml.data <- pml[, colSums(is.na(pml)) < nrow(pml) * 0.5]
+  nzv <- nearZeroVar(pml.data,saveMetrics = TRUE)
+  pml.data <- pml.data[,!nzv[,4]]
+  str(pml.data)
+  var.to.remove <- c("X","user_name","raw_timestamp_part_1")
+  var.to.remove <- c(var.to.remove,"raw_timestamp_part_2","cvtd_timestamp")
+  pml.data <- pml.data[,which(names(pml.data) %in% var.to.remove == FALSE)]
+  dim(pml.data)  
+
+```
+  We removed the columns with lot of NA's(50%) and the columns with near zero variance. Also we removed some columns which we believe they will not help to build a generalizable model such as X, user_name and some timestamps. 
+  
+## Modeling
+
+```{r,cache=TRUE}
+  set.seed(123)
+  inTraining <- createDataPartition(pml$classe,p = .15,list = FALSE)
+  pml.train <- pml.data[inTraining,]
+  pml.test <- pml.data[-inTraining,]
+  model <- train(classe ~ .,data = pml.train,method = "rf") 
+```
+
+The most usual split for a cross-validation is 70% for the train set and 30% for the test set. However, given the size of the dataset and the number of variables looks appropriate to try with a smaller train size first, and then increase the size if the results are not satisfactory. We use 15% for the train set and 85% for the test set.
+
+## Results
+
+```{r}
+  confusionMatrix(predict(model,newdata = pml.test),pml.test$classe)
+```
+
+Even that we only used a 15% of the train set we get a very high accuracy of around 97% on the test set, which is good enough for the present work.
+
+## References
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013. 
